@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.Networking;
 
 // # 実装された機能
@@ -112,6 +113,78 @@ public class CustomNetworkManager : NetworkManager
     /// </summary>
     protected List<UNETStatusMessage> statusMessages;
 
+    #region Server Event Handler
+
+    /// <summary>
+    /// サーバーで開始したときに実行されるイベントハンドラ。
+    /// </summary>
+    public UnityEvent StartServerEventHandler;
+
+    /// <summary>
+    /// サーバーで停止したときに実行されるイベントハンドラ。
+    /// </summary>
+    public UnityEvent StopServerEventHandler;
+
+    /// <summary>
+    /// サーバーでクライアントが接続されたときに実行されるイベントハンドラ。
+    /// </summary>
+    public UnityEvent ServerConnectEventHandler;
+
+    /// <summary>
+    /// サーバーでクライアントが切断されたときに実行されるイベントハンドラ。
+    /// </summary>
+    public UnityEvent ServerDisconnectEventHandler;
+
+    /// <summary>
+    /// サーバーでエラーが起きたときに実行されるイベントハンドラ。
+    /// </summary>
+    public UnityEvent ServerErrorEventHandler;
+
+    #endregion Server Event Handler
+
+    #region Host Event Handler
+
+    /// <summary>
+    /// ホストで開始したときに実行されるイベントハンドラ。
+    /// </summary>
+    public UnityEvent StartHostEventHandler;
+
+    /// <summary>
+    /// ホストで停止したときに実行されるイベントハンドラ。
+    /// </summary>
+    public UnityEvent StopHostEventHandler;
+
+    #endregion Host Event Handler
+
+    #region Client Event Handler
+
+    /// <summary>
+    /// クライアントで開始したときに実行されるイベントハンドラ。
+    /// </summary>
+    public UnityEvent StartClientEventHandler;
+
+    /// <summary>
+    /// クライアントで停止したときに実行されるイベントハンドラ。
+    /// </summary>
+    public UnityEvent StopClientEventHandler;
+
+    /// <summary>
+    /// クライアントでサーバーに接続したときに実行されるイベントハンドラ。
+    /// </summary>
+    public UnityEvent ClientConnectEventHandler;
+
+    /// <summary>
+    /// クライアントでサーバーから切断されたときに実行されるイベントハンドラ。
+    /// </summary>
+    public UnityEvent ClientDisconnectEventHandler;
+
+    /// <summary>
+    /// クライアントでエラーが起きたときに実行されるイベントハンドラ。
+    /// </summary>
+    public UnityEvent ClientErrorEventHandler;
+
+    #endregion Client Event Hanler
+
     #endregion Field
 
     #region Property
@@ -170,7 +243,7 @@ public class CustomNetworkManager : NetworkManager
     /// <param name="statusMessage">
     /// 追加するメッセージ。
     /// </param>
-    protected void AddStatusMessage(string statusMessage)
+    public void AddStatusMessage(string statusMessage)
     {
         AddStatusMessage(new UNETStatusMessage()
         {
@@ -185,7 +258,7 @@ public class CustomNetworkManager : NetworkManager
     /// <param name="statusMessage">
     /// 追加するメッセージ。
     /// </param>
-    protected void AddStatusMessage(UNETStatusMessage statusMessage)
+    public void AddStatusMessage(UNETStatusMessage statusMessage)
     {
         this.statusMessages.Insert(0, statusMessage);
         TrimStatusMessages();
@@ -232,7 +305,9 @@ public class CustomNetworkManager : NetworkManager
 
         // 再接続を試みる時間が経過していなかったら処理を抜けます。
 
-        if (this.autoConnectIntervalTimeSec > currentTime - this.autoConnectPreviousTryTimeSec)
+        float remainingTimeSec = currentTime - this.autoConnectPreviousTryTimeSec;
+
+        if (this.autoConnectIntervalTimeSec > remainingTimeSec)
         {
             return;
         }
@@ -367,6 +442,8 @@ public class CustomNetworkManager : NetworkManager
         }
 
         base.OnStartServer();
+
+        this.StartServerEventHandler.Invoke();
     }
 
     /// <summary>
@@ -381,6 +458,8 @@ public class CustomNetworkManager : NetworkManager
         this.autoConnectPreviousTryTimeSec = Time.timeSinceLevelLoad;
 
         base.OnStopServer();
+
+        this.StopServerEventHandler.Invoke();
     }
 
     /// <summary>
@@ -394,6 +473,8 @@ public class CustomNetworkManager : NetworkManager
         AddStatusMessage("Client Connected : " + conn.address);
 
         base.OnServerConnect(conn);
+
+        this.ServerConnectEventHandler.Invoke();
     }
 
     /// <summary>
@@ -407,6 +488,8 @@ public class CustomNetworkManager : NetworkManager
         AddStatusMessage("Client Disconnected : " + conn.address);
 
         base.OnServerDisconnect(conn);
+
+        this.ServerDisconnectEventHandler.Invoke();
     }
 
     /// <summary>
@@ -423,6 +506,8 @@ public class CustomNetworkManager : NetworkManager
         AddStatusMessage("Server Get Error : " + (NetworkError)errorCode);
 
         base.OnServerError(conn, errorCode);
+
+        this.ServerErrorEventHandler.Invoke();
     }
 
     #endregion Override Server
@@ -439,6 +524,8 @@ public class CustomNetworkManager : NetworkManager
         this.connectionType = UNETConnectionType.Host;
 
         base.OnStartHost();
+
+        this.StartHostEventHandler.Invoke();
     }
 
     /// <summary>
@@ -453,6 +540,8 @@ public class CustomNetworkManager : NetworkManager
         this.autoConnectPreviousTryTimeSec = Time.timeSinceLevelLoad;
 
         base.OnStopHost();
+
+        this.StopHostEventHandler.Invoke();
     }
 
     #endregion Override Host
@@ -475,6 +564,8 @@ public class CustomNetworkManager : NetworkManager
         }
 
         base.OnStartClient(client);
+
+        this.StartClientEventHandler.Invoke();
     }
 
     /// <summary>
@@ -489,6 +580,8 @@ public class CustomNetworkManager : NetworkManager
         this.autoConnectPreviousTryTimeSec = Time.timeSinceLevelLoad;
 
         base.OnStopClient();
+
+        this.StopClientEventHandler.Invoke();
     }
 
     /// <summary>
@@ -502,10 +595,12 @@ public class CustomNetworkManager : NetworkManager
         AddStatusMessage("Connected to Server. : " + conn.address);
 
         base.OnClientConnect(conn);
+
+        this.ClientConnectEventHandler.Invoke();
     }
 
     /// <summary>
-    /// クライアントでサーバーとの接続が切断されたときに呼び出されます。
+    /// クライアントでサーバーから切断されたときに呼び出されます。
     /// </summary>
     /// <param name="conn">
     /// 該当する接続情報。
@@ -515,6 +610,8 @@ public class CustomNetworkManager : NetworkManager
         AddStatusMessage("Disconnected from Server. : " + conn.address);
 
         base.OnClientDisconnect(conn);
+
+        this.ClientDisconnectEventHandler.Invoke();
     }
 
     /// <summary>
@@ -531,6 +628,8 @@ public class CustomNetworkManager : NetworkManager
         AddStatusMessage("Client Get Error : " + (NetworkError)errorCode);
 
         base.OnClientError(conn, errorCode);
+
+        this.ClientErrorEventHandler.Invoke();
     }
 
     #endregion Override Client

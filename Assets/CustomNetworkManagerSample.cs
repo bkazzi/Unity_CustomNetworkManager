@@ -40,12 +40,24 @@ public class CustomNetworkManagerSample : MonoBehaviour
 
     protected virtual void OnGUI()
     {
-        GUILayout.Label("= Log =");
+        GUILayout.Label("= Key Control =");
+        GUILayout.Label("A : Toggle Auto Connect.");
+        GUILayout.Label("S : Start As Server.");
+        GUILayout.Label("H : Start As Host.");
+        GUILayout.Label("C : Start As Client.");
+        GUILayout.Label("D : Stop.");
+
+        GUILayout.Label("= Status Log =");
 
         foreach (CustomNetworkManager.UNETStatusMessage statusMessage
                 in this.customNetworkManager.StatusMessages)
         {
             GUILayout.Label(statusMessage.time.ToLongTimeString() + " - "+ statusMessage.message);
         }
+    }
+
+    public virtual void SampleEventHandler()
+    {
+        this.customNetworkManager.AddStatusMessage("EventHandle Message.");
     }
 }
