@@ -301,10 +301,9 @@ public class CustomNetworkManager : NetworkManager
             return;
         }
 
-        float currentTime = Time.timeSinceLevelLoad;
-
         // 再接続を試みる時間が経過していなかったら処理を抜けます。
 
+        float currentTime      = Time.timeSinceLevelLoad;
         float remainingTimeSec = currentTime - this.autoConnectPreviousTryTimeSec;
 
         if (this.autoConnectIntervalTimeSec > remainingTimeSec)
@@ -434,10 +433,9 @@ public class CustomNetworkManager : NetworkManager
     /// </summary>
     public override void OnStartServer()
     {
-        AddStatusMessage("Start Server.");
-
         if (this.connectionType != UNETConnectionType.Host)
         {
+            AddStatusMessage("Start Server.");
             this.connectionType = UNETConnectionType.Server;
         }
 
@@ -556,10 +554,9 @@ public class CustomNetworkManager : NetworkManager
     /// </param>
     public override void OnStartClient(NetworkClient client)
     {
-        AddStatusMessage("Start Client.");
-
         if (this.connectionType != UNETConnectionType.Host)
         {
+            AddStatusMessage("Start Client.");
             this.connectionType = UNETConnectionType.Client;
         }
 
