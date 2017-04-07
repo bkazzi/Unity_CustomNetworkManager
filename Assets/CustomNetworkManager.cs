@@ -69,7 +69,7 @@ public class CustomNetworkManager : NetworkManager
 
     #endregion Enum
 
-    #region const Field
+    #region Const Field
 
     protected const string MessageDefault = "…";
 
@@ -243,7 +243,7 @@ public class CustomNetworkManager : NetworkManager
     /// </summary>
     protected virtual void Start()
     {
-        TryToAutoStart();
+        TryToAutoStart(true);
     }
 
     /// <summary>
@@ -309,7 +309,11 @@ public class CustomNetworkManager : NetworkManager
     /// <summary>
     /// 自動接続を試みます。自動接続モードでないときは何も処理されません。
     /// </summary>
-    protected virtual void TryToAutoStart()
+    /// <param name="ignoreAutoConnectInterval">
+    /// 自動接続を試行するインターバル時間を無視するかどうか。
+    /// true のとき無視します。規定値は false です。
+    /// </param>
+    protected virtual void TryToAutoStart(bool ignoreAutoConnectInterval = false)
     {
         // 自動接続が無効であったり、既に接続されているときは処理を抜けます。
 
@@ -318,19 +322,23 @@ public class CustomNetworkManager : NetworkManager
             return;
         }
 
-        // 再接続を試みる時間が経過していなかったら処理を抜けます。
+        // 再接続を試みるインターバール時間が経過していなかったら処理を抜けます。
+        // ただし、インターバル時間を無視する場合があります(初回起動時など)。
 
-        float currentTime      = Time.timeSinceLevelLoad;
-        float remainingTimeSec = currentTime - this.autoConnectPreviousTryTimeSec;
+        if (!ignoreAutoConnectInterval)
+        { 
+            float currentTime = Time.timeSinceLevelLoad;
+            float remainingTimeSec = currentTime - this.autoConnectPreviousTryTimeSec;
 
-        if (this.autoConnectIntervalTimeSec > remainingTimeSec)
-        {
-            return;
+            if (this.autoConnectIntervalTimeSec > remainingTimeSec)
+            {
+                return;
+            }
+
+            this.autoConnectPreviousTryTimeSec = currentTime;
         }
 
-        // 情報を更新して接続を試みます。
-
-        this.autoConnectPreviousTryTimeSec = currentTime;
+        // 情報を追加して接続を試みます。
 
         AddStatusMessage("Try to Auto Connect.");
 
