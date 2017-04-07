@@ -78,6 +78,18 @@ public class CustomNetworkManager : NetworkManager
     #region Field
 
     /// <summary>
+    /// 現在の接続の種類。
+    /// </summary>
+    private UNETConnectionType connectionType;
+
+    /// <summary>
+    /// クライアントで実行されるとき、サーバーに接続されているかどうか。
+    /// </summary>
+    private bool clientIsConnectedToServer;
+
+    #region Autio Connect Settings
+
+    /// <summary>
     /// 自動接続するかどうか。true のとき自動接続します。
     /// </summary>
     public bool autoConnect;
@@ -97,10 +109,9 @@ public class CustomNetworkManager : NetworkManager
     /// </summary>
     protected float autoConnectPreviousTryTimeSec = 0;
 
-    /// <summary>
-    /// 現在の接続の種類。
-    /// </summary>
-    private UNETConnectionType connectionType;
+    #endregion Auto Connect Settings
+
+    #region Status 
 
     /// <summary>
     /// ステータスメッセージの最大保存数。
@@ -112,6 +123,10 @@ public class CustomNetworkManager : NetworkManager
     /// 先頭が最新のメッセージになります。
     /// </summary>
     protected List<UNETStatusMessage> statusMessages;
+
+    #endregion Status
+
+    #region Event Handler
 
     #region Server Event Handler
 
@@ -184,6 +199,8 @@ public class CustomNetworkManager : NetworkManager
     public UnityEvent ClientErrorEventHandler;
 
     #endregion Client Event Hanler
+
+    #endregion Event Handler
 
     #endregion Field
 
@@ -463,14 +480,14 @@ public class CustomNetworkManager : NetworkManager
     /// <summary>
     /// サーバーでクライアントが接続されたときに呼び出されます。
     /// </summary>
-    /// <param name="conn">
+    /// <param name="networkConnection">
     /// 該当する接続情報。
     /// </param>
-    public override void OnServerConnect(NetworkConnection conn)
+    public override void OnServerConnect(NetworkConnection networkConnection)
     {
-        AddStatusMessage("Client Connected : " + conn.address);
+        AddStatusMessage("Client Connected : " + networkConnection.address);
 
-        base.OnServerConnect(conn);
+        base.OnServerConnect(networkConnection);
 
         this.ServerConnectEventHandler.Invoke();
     }
@@ -478,14 +495,14 @@ public class CustomNetworkManager : NetworkManager
     /// <summary>
     /// サーバーでクライアントとの接続が切断されたときに呼び出されます。
     /// </summary>
-    /// <param name="conn">
+    /// <param name="networkConnection">
     /// 該当する接続情報。
     /// </param>
-    public override void OnServerDisconnect(NetworkConnection conn)
+    public override void OnServerDisconnect(NetworkConnection networkConnection)
     {
-        AddStatusMessage("Client Disconnected : " + conn.address);
+        AddStatusMessage("Client Disconnected : " + networkConnection.address);
 
-        base.OnServerDisconnect(conn);
+        base.OnServerDisconnect(networkConnection);
 
         this.ServerDisconnectEventHandler.Invoke();
     }
@@ -493,17 +510,17 @@ public class CustomNetworkManager : NetworkManager
     /// <summary>
     /// サーバーでエラーが起きたときに呼び出されます。
     /// </summary>
-    /// <param name="conn">
+    /// <param name="networkConnection">
     /// 該当する接続情報。
     /// </param>
     /// <param name="errorCode">
     /// エラーコード。
     /// </param>
-    public override void OnServerError(NetworkConnection conn, int errorCode)
+    public override void OnServerError(NetworkConnection networkConnection, int errorCode)
     {
         AddStatusMessage("Server Get Error : " + (NetworkError)errorCode);
 
-        base.OnServerError(conn, errorCode);
+        base.OnServerError(networkConnection, errorCode);
 
         this.ServerErrorEventHandler.Invoke();
     }
@@ -549,10 +566,10 @@ public class CustomNetworkManager : NetworkManager
     /// <summary>
     /// クライアントで開始されたときに呼び出されます。
     /// </summary>
-    /// <param name="client">
+    /// <param name="networkClient">
     /// 該当するクライアント。
     /// </param>
-    public override void OnStartClient(NetworkClient client)
+    public override void OnStartClient(NetworkClient networkClient)
     {
         if (this.connectionType != UNETConnectionType.Host)
         {
@@ -560,7 +577,7 @@ public class CustomNetworkManager : NetworkManager
             this.connectionType = UNETConnectionType.Client;
         }
 
-        base.OnStartClient(client);
+        base.OnStartClient(networkClient);
 
         this.StartClientEventHandler.Invoke();
     }
@@ -584,14 +601,16 @@ public class CustomNetworkManager : NetworkManager
     /// <summary>
     /// クライアントでサーバーに接続したときに呼び出されます。
     /// </summary>
-    /// <param name="conn">
+    /// <param name="networkConnection">
     /// 該当する接続情報。
     /// </param>
-    public override void OnClientConnect(NetworkConnection conn)
+    public override void OnClientConnect(NetworkConnection networkConnection)
     {
-        AddStatusMessage("Connected to Server. : " + conn.address);
+        AddStatusMessage("Connected to Server. : " + networkConnection.address);
 
-        base.OnClientConnect(conn);
+        this.clientIsConnectedToServer = true;
+
+        base.OnClientConnect(networkConnection);
 
         this.ClientConnectEventHandler.Invoke();
     }
@@ -599,14 +618,26 @@ public class CustomNetworkManager : NetworkManager
     /// <summary>
     /// クライアントでサーバーから切断されたときに呼び出されます。
     /// </summary>
-    /// <param name="conn">
+    /// <param name="networkConnection">
     /// 該当する接続情報。
     /// </param>
-    public override void OnClientDisconnect(NetworkConnection conn)
+    public override void OnClientDisconnect(NetworkConnection networkConnection)
     {
-        AddStatusMessage("Disconnected from Server. : " + conn.address);
+        // クライアントが一度でも接続に成功しているときと、
+        // 一度も成功していないときとでメッセージを分け、状況を把握しやすくします。
 
-        base.OnClientDisconnect(conn);
+        if (this.clientIsConnectedToServer)
+        {
+            AddStatusMessage("Disconnected from Server. : " + networkConnection.address);
+        }
+        else
+        {
+            AddStatusMessage("Faild to Connect Server. : " + networkConnection.address);
+        }
+
+        this.clientIsConnectedToServer = false;
+
+        base.OnClientDisconnect(networkConnection);
 
         this.ClientDisconnectEventHandler.Invoke();
     }
@@ -614,17 +645,17 @@ public class CustomNetworkManager : NetworkManager
     /// <summary>
     /// クライアントでエラーが起きたときに呼び出されます。
     /// </summary>
-    /// <param name="conn">
+    /// <param name="networkConnection">
     /// 該当する接続情報。
     /// </param>
     /// <param name="errorCode">
     /// エラーコード。
     /// </param>
-    public override void OnClientError(NetworkConnection conn, int errorCode)
+    public override void OnClientError(NetworkConnection networkConnection, int errorCode)
     {
         AddStatusMessage("Client Get Error : " + (NetworkError)errorCode);
 
-        base.OnClientError(conn, errorCode);
+        base.OnClientError(networkConnection, errorCode);
 
         this.ClientErrorEventHandler.Invoke();
     }
