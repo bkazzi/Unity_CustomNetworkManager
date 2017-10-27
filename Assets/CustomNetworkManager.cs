@@ -439,15 +439,13 @@ public class CustomNetworkManager : NetworkManager
 
     #endregion Start Stop
 
-    // # 実装上の注意 1
+    // NOTE:
     // 以下のメソッドで実行される処理は、base メソッドよりも先に実行されています。
     // base メソッドの中で、引数となる接続情報を破棄する処理などが実行されるためです。
-
-    // # 実装上の注意 2
+    // 
     // Host として起動する場合、OnStartHost が実行された後に、
     // OnStartServer, OnStartClient が実行される点に注意してください。
-
-    // # 実装上の注意 3
+    // 
     // 停止するタイミングで this.autoConnectPreviousTryTimeSec をリセットしています。
     // 停止した直後に自動接続が実行されないようにするための措置です。
 
