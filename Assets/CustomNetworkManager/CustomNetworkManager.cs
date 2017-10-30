@@ -4,19 +4,19 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.Networking;
 
-// # 実装された機能
+// 実装された機能:
 // - 実行内容などのステータスを記録する機能。
 // - 開始済みかどうかを検証してから安全に開始する機能。
 // - 定期的に自動接続する機能。
 // -- 例えば他のスクリプトなどの制御なしに、実行時に自動でホストとして起動することができます。
 // -- 例えばクライアントが接続に失敗したとき、自動的に接続させたりすることができます。
 
-// # 実装方針
+// 実装方針:
 // base.client.RegisterHandler(MsgType.Error, OnError);
 // 形式でエラーメッセージを取得しようとしても具体的なメッセージは得られず、
 // 主にエラーコードだけが取得できるので、これを使ったエラーのハンドリングは取り止めました。
 
-// # エラーコードについて
+// エラーコードについて:
 // エラー発生時に取得することができるエラーコードは、
 // transport layer NetworkError code: に等しいようです。
 // https://docs.unity3d.com/ScriptReference/Networking.NetworkError.html
@@ -126,6 +126,49 @@ public class CustomNetworkManager : NetworkManager
 
     #endregion Status
 
+    #region Event Class
+
+    /// <summary>
+    /// エラーコードの情報を持った、NetworkConnection のラッパー。
+    /// </summary>
+    [Serializable]
+    public class NetworkConnectionError
+    {
+        #region Field
+
+        /// <summary>
+        /// エラーコード。
+        /// </summary>
+        public int errorCode;
+
+        /// <summary>
+        /// NetworkConnection。
+        /// </summary>
+        public NetworkConnection networkConnection;
+
+        #endregion Field
+    }
+
+    /// <summary>
+    /// NetworkConnection を引数とするイベント。
+    /// </summary>
+    [Serializable]
+    public class NetworkConnectionEvent : UnityEvent<NetworkConnection> { }
+
+    /// <summary>
+    /// NetworkConnection
+    /// </summary>
+    [Serializable]
+    public class NetworkConnectionErrorEvent : UnityEvent<NetworkConnectionError> { }
+
+    /// <summary>
+    /// NetworkClient を引数とするイベント。
+    /// </summary>
+    [Serializable]
+    public class NetworkClientEvent : UnityEvent<NetworkClient> { }
+
+    #endregion Event Class
+
     #region Event Handler
 
     #region Server Event Handler
@@ -143,17 +186,17 @@ public class CustomNetworkManager : NetworkManager
     /// <summary>
     /// サーバーでクライアントが接続されたときに実行されるイベントハンドラ。
     /// </summary>
-    public UnityEvent ServerConnectEventHandler;
+    public NetworkConnectionEvent ServerConnectEventHandler;
 
     /// <summary>
     /// サーバーでクライアントが切断されたときに実行されるイベントハンドラ。
     /// </summary>
-    public UnityEvent ServerDisconnectEventHandler;
+    public NetworkConnectionEvent ServerDisconnectEventHandler;
 
     /// <summary>
     /// サーバーでエラーが起きたときに実行されるイベントハンドラ。
     /// </summary>
-    public UnityEvent ServerErrorEventHandler;
+    public NetworkConnectionErrorEvent ServerErrorEventHandler;
 
     #endregion Server Event Handler
 
@@ -176,7 +219,7 @@ public class CustomNetworkManager : NetworkManager
     /// <summary>
     /// クライアントで開始したときに実行されるイベントハンドラ。
     /// </summary>
-    public UnityEvent StartClientEventHandler;
+    public NetworkClientEvent StartClientEventHandler;
 
     /// <summary>
     /// クライアントで停止したときに実行されるイベントハンドラ。
@@ -186,17 +229,17 @@ public class CustomNetworkManager : NetworkManager
     /// <summary>
     /// クライアントでサーバーに接続したときに実行されるイベントハンドラ。
     /// </summary>
-    public UnityEvent ClientConnectEventHandler;
+    public NetworkConnectionEvent ClientConnectEventHandler;
 
     /// <summary>
     /// クライアントでサーバーから切断されたときに実行されるイベントハンドラ。
     /// </summary>
-    public UnityEvent ClientDisconnectEventHandler;
+    public NetworkConnectionEvent ClientDisconnectEventHandler;
 
     /// <summary>
     /// クライアントでエラーが起きたときに実行されるイベントハンドラ。
     /// </summary>
-    public UnityEvent ClientErrorEventHandler;
+    public NetworkConnectionErrorEvent ClientErrorEventHandler;
 
     #endregion Client Event Hanler
 
@@ -205,6 +248,17 @@ public class CustomNetworkManager : NetworkManager
     #endregion Field
 
     #region Property
+
+    /// <summary>
+    /// NetworkManager の singleton のインスタンス。
+    /// </summary>
+    public static new CustomNetworkManager singleton
+    {
+        get
+        {
+            return (CustomNetworkManager)NetworkManager.singleton;
+        }
+    }
 
     /// <summary>
     /// 現在の接続の種類を取得します。
@@ -226,10 +280,17 @@ public class CustomNetworkManager : NetworkManager
 
     #region Method
 
+    // NOTE:
+    // Awake で初期化時に呼び出すことは強くしない方が良いです。
+    // NetworkManager が Awake を使った初期化を実行するためです。
+    // Awake によって、singleton などの初期化を行っているようです。
+    // Awake を override する手段がないので、やむを得ずこのような実装になります。
+    // (Unity は Awake → OnEnable → Start の順に実行されます。)
+
     /// <summary>
-    /// 初期化時に呼び出されます。
+    /// 有効化時に呼び出されます。
     /// </summary>
-    protected virtual void Awake()
+    protected virtual void OnEnable()
     {
         this.connectionType = UNETConnectionType.None;
 
@@ -253,6 +314,8 @@ public class CustomNetworkManager : NetworkManager
     {
         TryToAutoStart();
     }
+
+    #region Status Message
 
     /// <summary>
     /// ステータスメッセージを追加します。
@@ -303,6 +366,8 @@ public class CustomNetworkManager : NetworkManager
     {
         this.statusMessages.Clear();
     }
+
+    #endregion Status Message
 
     #region Start Stop
 
@@ -440,7 +505,7 @@ public class CustomNetworkManager : NetworkManager
     #endregion Start Stop
 
     // NOTE:
-    // 以下のメソッドで実行される処理は、base メソッドよりも先に実行されています。
+    // 以下のメソッドで実行される一部の処理は、base メソッドよりも先に実行されています。
     // base メソッドの中で、引数となる接続情報を破棄する処理などが実行されるためです。
     // 
     // Host として起動する場合、OnStartHost が実行された後に、
@@ -495,7 +560,7 @@ public class CustomNetworkManager : NetworkManager
 
         base.OnServerConnect(networkConnection);
 
-        this.ServerConnectEventHandler.Invoke();
+        this.ServerConnectEventHandler.Invoke(networkConnection);
     }
 
     /// <summary>
@@ -510,7 +575,7 @@ public class CustomNetworkManager : NetworkManager
 
         base.OnServerDisconnect(networkConnection);
 
-        this.ServerDisconnectEventHandler.Invoke();
+        this.ServerDisconnectEventHandler.Invoke(networkConnection);
     }
 
     /// <summary>
@@ -528,7 +593,11 @@ public class CustomNetworkManager : NetworkManager
 
         base.OnServerError(networkConnection, errorCode);
 
-        this.ServerErrorEventHandler.Invoke();
+        this.ServerErrorEventHandler.Invoke(new NetworkConnectionError()
+        {
+            networkConnection = networkConnection,
+            errorCode = errorCode
+        });
     }
 
     #endregion Override Server
@@ -585,7 +654,7 @@ public class CustomNetworkManager : NetworkManager
 
         base.OnStartClient(networkClient);
 
-        this.StartClientEventHandler.Invoke();
+        this.StartClientEventHandler.Invoke(networkClient);
     }
 
     /// <summary>
@@ -618,7 +687,7 @@ public class CustomNetworkManager : NetworkManager
 
         base.OnClientConnect(networkConnection);
 
-        this.ClientConnectEventHandler.Invoke();
+        this.ClientConnectEventHandler.Invoke(networkConnection);
     }
 
     /// <summary>
@@ -645,7 +714,7 @@ public class CustomNetworkManager : NetworkManager
 
         base.OnClientDisconnect(networkConnection);
 
-        this.ClientDisconnectEventHandler.Invoke();
+        this.ClientDisconnectEventHandler.Invoke(networkConnection);
     }
 
     /// <summary>
@@ -663,7 +732,11 @@ public class CustomNetworkManager : NetworkManager
 
         base.OnClientError(networkConnection, errorCode);
 
-        this.ClientErrorEventHandler.Invoke();
+        this.ClientErrorEventHandler.Invoke(new NetworkConnectionError()
+        {
+            networkConnection = networkConnection,
+            errorCode = errorCode
+        });
     }
 
     #endregion Override Client
